@@ -1,11 +1,10 @@
 from typing import Optional
 
 import torch
-from torch import Tensor, _VF
-
+from torch import _VF, Tensor
 from torch.nn.utils.rnn import PackedSequence
 
-from .base import RNNCellBase,RNNBase
+from .base import RNNBase, RNNCellBase
 
 
 class GRUCell(RNNCellBase):
@@ -55,8 +54,10 @@ class GRUCell(RNNCellBase):
                 - shape : (batch_size, hidden_size)
         """
 
-        assert input.dim() in (1, 2), \
-            f"GRUCell: Expected input to be 1-D or 2-D but received {input.dim()}-D tensor"
+        assert input.dim() in (
+            1,
+            2,
+        ), f"GRUCell: Expected input to be 1-D or 2-D but received {input.dim()}-D tensor"
 
         is_batched = input.dim() == 2
         if not is_batched:
@@ -81,8 +82,8 @@ class GRUCell(RNNCellBase):
 
         h_y = update_gate * hx + (1 - update_gate) * new_gate
 
-
         return h_y
+
 
 class GRU(RNNBase):
     def __init__(self, *args, **kwargs) -> None:
@@ -146,5 +147,3 @@ class GRU(RNNBase):
 
             h_i = hx[0][layer_idx, :, :]
             c_i = hx[1][layer_idx, :, :]
-
-

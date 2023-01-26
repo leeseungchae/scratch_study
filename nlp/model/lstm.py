@@ -8,12 +8,12 @@ from .base import RNNBase, RNNCellBase
 
 class LSTMCell(RNNCellBase):
     def __init__(
-            self,
-            input_size: int,
-            hidden_size: int,
-            bias: bool = True,
-            device=None,
-            dtype=None,
+        self,
+        input_size: int,
+        hidden_size: int,
+        bias: bool = True,
+        device=None,
+        dtype=None,
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
         super(LSTMCell, self).__init__(
@@ -44,7 +44,7 @@ class LSTMCell(RNNCellBase):
         """
 
     def forward(
-            self, input: Tensor, hx: Optional[Tuple[Tensor, Tensor]]
+        self, input: Tensor, hx: Optional[Tuple[Tensor, Tensor]]
     ) -> Tuple[Tensor, Tensor]:
         """
         Args:
@@ -142,7 +142,7 @@ class LSTM(RNNBase):
             next_hidden_f, next_hidden_b = [], []
             next_cell_f, next_cell_b = [], []
             for layer_idx, (forward_cell, backward_cell) in enumerate(
-                    zip(self.forward_lstm, self.backward_lstm)
+                zip(self.forward_lstm, self.backward_lstm)
             ):
                 if layer_idx == 0:
                     input_f_state = input
