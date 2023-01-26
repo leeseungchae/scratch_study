@@ -134,3 +134,7 @@ dmypy.json
 *.ko
 *.en
 *.csv
+/data/sample/train_en
+/data/sample/train_ko
+/data/sample/valid_en
+/data/sample/valid_ko
