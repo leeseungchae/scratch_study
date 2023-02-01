@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+*.model
+*.vocab
+*.ko
+*.en
+*.csv
