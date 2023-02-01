@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 import torch
 from torch import Tensor, _VF
@@ -68,6 +68,9 @@ class GRUCell(RNNCellBase):
             )
         else:
             hx = hx.unsqueeze(0) if not is_batched else hx
+        hx = hx[0]
+
+        #Todo hx 가 두개의 튜플로 나온다.
 
         x_t = self.ih(input)
         h_t = self.hh(hx)
@@ -88,6 +91,8 @@ class GRU(RNNBase):
     def __init__(self, *args, **kwargs) -> None:
         super(GRU, self).__init__("GRU", *args, **kwargs)
         self.forward_gru = self.init_layers()
+        if self.bidirectional:
+            self.backward_gru = self.init_layers()
 
     def forward(self, input: Tensor, hx: Optional[Tensor] = None) -> Tensor:
         batch_dim = 0 if self.batch_first else 1
@@ -133,6 +138,120 @@ class GRU(RNNBase):
                 raise RuntimeError(msg)
             hx = (hx[0].unsqueeze(1), hx[1].unsqueeze(1))
 
+
+        hidden_state = []
+        cell_state = []
+
+
+        if self.bidirectional:
+            next_hidden_f, next_hidden_b = [], []
+            next_cell_f, next_cell_b = [], []
+            for layer_idx, (forward_cell, backward_cell) in enumerate(
+                    zip(self.forward_gru, self.backward_gru)
+            ):
+                if layer_idx == 0:
+                    input_f_state = input
+                    input_b_state = input
+                else:
+                    input_f_state = torch.stack(next_hidden_f, dim=sequence_dim)
+                    input_b_state = torch.stack(next_hidden_b, dim=sequence_dim)
+                    next_hidden_f, next_hidden_b = [], []
+                    next_cell_f, next_cell_b = [], []
+
+                h_f_i = hx[0][2 * layer_idx, :, :]
+                h_b_i = hx[0][2 * layer_idx + 1, :, :]
+                c_f_i = hx[1][2 * layer_idx, :, :]
+                c_b_i = hx[1][2 * layer_idx + 1, :, :]
+
+
+                for i in range(sequence_size):
+                    input_f_i = (
+                        input_f_state[:, i, :]
+                        if self.batch_first
+                        else input_f_state[i, :, :]
+                    )
+
+                    input_b_i = (
+                        input_b_state[:, -(i + 1), :]
+                        if self.batch_first
+                        else input_b_state[-(i + 1), :, :]
+                    )
+
+                    h_f_i, c_f_i = forward_cell(input_f_i, (h_f_i, c_f_i))
+                    h_b_i, c_b_i = backward_cell(input_b_i, (h_b_i, c_b_i))
+
+                    if self.dropout:
+                        h_f_i = self.dropout(h_f_i)
+                        h_b_i = self.dropout(h_b_i)
+                        c_f_i = self.dropout(c_f_i)
+                        c_b_i = self.dropout(c_b_i)
+
+                    next_hidden_f.append(h_f_i)
+                    next_hidden_b.append(h_b_i)
+                    next_cell_f.append(c_f_i)
+                    next_cell_b.append(c_b_i)
+
+                hidden_state.append(torch.stack(next_hidden_f, dim=sequence_dim))
+                hidden_state.append(torch.stack(next_hidden_b[::-1], dim=sequence_dim))
+                cell_state.append(torch.stack(next_cell_f, dim=sequence_dim))
+                cell_state.append(torch.stack(next_cell_b[::-1], dim=sequence_dim))
+
+            hidden_states = torch.stack(hidden_state, dim=0)
+            cell_states = torch.stack(cell_state, dim=0)
+
+            output_f_state = hidden_states[-2, :, :, :]
+            output_b_state = hidden_states[-1, :, :, :]
+            output = torch.cat([output_f_state, output_b_state], dim=2)
+
+        else:
+            next_hidden, next_cell = [], []
+            for layer_idx, gru_cell in enumerate(self.forward_gru):
+                if layer_idx == 0:
+                    input_state = input
+
+                else:
+                    input_state = torch.stack(next_hidden, dim=sequence_dim)
+                    next_hidden = []
+                    next_cell = []
+
+                h_i = hx[0][layer_idx, :, :]
+                c_i = hx[1][layer_idx, :, :]
+
+
+                for i in range(sequence_size):
+                    input_i = (
+                        input_state[:, i, :]
+                        if self.batch_first
+                        else input_state[i, :, :]
+                    )
+
+                    h_i, c_i = gru_cell(input_i, (h_i, c_i))
+                    if self.dropout:
+                        h_i = self.dropout(h_i)
+                        c_i = self.dropout(c_i)
+
+                    next_hidden.append(h_i)
+                    next_cell.append(c_i)
+
+                hidden_state.append(torch.stack(next_hidden, dim=sequence_dim))
+                cell_state.append(torch.stack(next_cell, dim=sequence_dim))
+
+            hidden_states = torch.stack(hidden_state, dim=0)
+            cell_states = torch.stack(cell_state, dim=0)
+
+            output = hidden_states[-1, :, :, :]  # -> [L, N, H_out]
+
+        hn = (
+            hidden_states[:, :, -1, :]
+            if self.batch_first
+            else hidden_states[:, -1, :, :]
+        )
+        cn = cell_states[:, :, -1, :] if self.batch_first else cell_states[:, -1, :, :]
+        return output, (hn, cn)
+
+
+
+
         next_hidden, next_cell = [], []
 
         for layer_idx, lstm_cell in enumerate(self.forward_gru):
@@ -148,3 +267,17 @@ class GRU(RNNBase):
             c_i = hx[1][layer_idx, :, :]
 
 
+    def init_layers(self) -> List[GRUCell]:
+        layers = []
+        for layer_idx in range(self.num_layers):
+            input_size = self.input_size if layer_idx == 0 else self.hidden_size
+            layers.append(
+                GRUCell(
+                    input_size=input_size,
+                    hidden_size=self.hidden_size,
+                    bias=self.bias,
+                    device=self.device,
+                    dtype=self.dtype,
+                )
+            )
+        return layers
