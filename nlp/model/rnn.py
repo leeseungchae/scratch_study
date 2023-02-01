@@ -219,9 +219,9 @@ class RNN(RNNBase):
                         if self.batch_first
                         else input_state[i, :, :]
                     )  # -> [N, H_in]
-                    # print(f"input_{i} : {input_i.size()}")
-                    h_i = rnn_cell(input_i, h_i)  # -> [N, H_out]
-                    # print(f"h_{i} : {h_i.size()}")
+                    print(f"input_{i} : {input_i.size()}")
+                    h_i = rnn_cell(input_i)  # -> [N, H_out]
+                    print(f"h_{i} : {h_i.size()}")
                     if self.dropout:
                         h_i = self.dropout(h_i)
                     next_hidden.append(h_i)  # -> 각 층의 hidden_state 들

@@ -9,6 +9,8 @@ torch_input = torch.randn(
 # exit()
 # torch_input = torch.randn(10,20,10) # batch_first = True  sbatch , sequence length  # hidden size
 # batch_first = False(default)
-rnn_custom = RNN(input_size=10, hidden_size=3, num_layers=2, bidirectional=False)
+rnn_custom = RNN(input_size=2, hidden_size=3, num_layers=2, bidirectional=False)
 
-rnn_custom(torch_input)
+output,hn = rnn_custom(torch_input)
+
+print(output)
