@@ -113,14 +113,7 @@ class GRU(RNNBase):
                 device=self.device,
             )
 
-            c_zeros = torch.zeros(  # cell state 초기화
-                self.num_layers * self.num_directions,
-                batch_size,
-                self.hidden_size,
-                dtype=self.dtype,
-                device=self.device,
-            )
-            hx = (h_zeros, c_zeros)
+            hx = h_zeros
 
         elif is_batch:
             if hx[0].dim() != 3 or hx[1].dim() != 3:
@@ -137,7 +130,7 @@ class GRU(RNNBase):
                     f"also be 2-D but got ({hx[0].dim()}-D, {hx[1].dim()}-D) tensors"
                 )
                 raise RuntimeError(msg)
-            hx = (hx[0].unsqueeze(1), hx[1].unsqueeze(1))
+            hx = (hx[0].unsqueeze(1))
 
 
         hidden_state = []
@@ -156,8 +149,8 @@ class GRU(RNNBase):
                     input_b_state = torch.stack(next_hidden_b, dim=sequence_dim)
                     next_hidden_f, next_hidden_b = [], []
 
-                h_f_i = hx[0][2 * layer_idx, :, :]
-                h_b_i = hx[0][2 * layer_idx + 1, :, :]
+                h_f_i = hx[2 * layer_idx, :, :]
+                h_b_i = hx[2 * layer_idx + 1, :, :]
 
                 for i in range(sequence_size):
                     input_f_i = (
@@ -171,6 +164,9 @@ class GRU(RNNBase):
                         if self.batch_first
                         else input_b_state[-(i + 1), :, :]
                     )
+                    h_f_i= self.forward_gru(input_f_i)
+                    h_b_i = self.backward_gru(input_b_i)
+
 
                     if self.dropout:
                         h_f_i = self.dropout(h_f_i)
@@ -199,7 +195,7 @@ class GRU(RNNBase):
                     input_state = torch.stack(next_hidden, dim=sequence_dim)
                     next_hidden = []
 
-                h_i = hx[0][layer_idx, :, :]
+                h_i = hx[layer_idx, :, :]
 
 
                 for i in range(sequence_size):
@@ -209,7 +205,7 @@ class GRU(RNNBase):
                         else input_state[i, :, :]
                     )
                     print(f"input_{i} : {input_i.size()}")
-                    h_i = gru_cell(input_i, (h_i))
+                    h_i = gru_cell(input_i)
                     print(f"h_{i} : {h_i.size()}")
                     if self.dropout:
                         h_i = self.dropout(h_i)
