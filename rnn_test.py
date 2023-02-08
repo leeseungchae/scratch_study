@@ -11,6 +11,6 @@ torch_input = torch.randn(
 # batch_first = False(default)
 rnn_custom = RNN(input_size=2, hidden_size=3, num_layers=2, bidirectional=False)
 
-output,hn = rnn_custom(torch_input)
+output, hn = rnn_custom(torch_input)
 
 print(output)

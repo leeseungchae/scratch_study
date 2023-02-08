@@ -68,7 +68,6 @@ class LSTMCell(RNNCellBase):
             )
             hx = (hx, hx)
 
-
         hx, cx = hx
 
         gates = self.ih(input) + self.hh(hx)

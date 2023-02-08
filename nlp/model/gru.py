@@ -1,11 +1,10 @@
-from typing import Optional, List
+from typing import List, Optional
 
 import torch
-from torch import Tensor, _VF
-
+from torch import _VF, Tensor
 from torch.nn.utils.rnn import PackedSequence
 
-from .base import RNNCellBase,RNNBase
+from .base import RNNBase, RNNCellBase
 
 
 class GRUCell(RNNCellBase):
@@ -55,8 +54,10 @@ class GRUCell(RNNCellBase):
                 - shape : (batch_size, hidden_size)
         """
 
-        assert input.dim() in (1, 2), \
-            f"GRUCell: Expected input to be 1-D or 2-D but received {input.dim()}-D tensor"
+        assert input.dim() in (
+            1,
+            2,
+        ), f"GRUCell: Expected input to be 1-D or 2-D but received {input.dim()}-D tensor"
 
         is_batched = input.dim() == 2
         if not is_batched:
@@ -70,7 +71,7 @@ class GRUCell(RNNCellBase):
             hx = hx.unsqueeze(0) if not is_batched else hx
         # hx = hx[0]
 
-        #Todo hx 가 두개의 튜플로 나온다.
+        # Todo hx 가 두개의 튜플로 나온다.
         """"""
 
         x_t = self.ih(input)
@@ -85,8 +86,8 @@ class GRUCell(RNNCellBase):
 
         h_y = update_gate * hx + (1 - update_gate) * new_gate
 
-
         return h_y
+
 
 class GRU(RNNBase):
     def __init__(self, *args, **kwargs) -> None:
@@ -130,17 +131,13 @@ class GRU(RNNBase):
                     f"also be 2-D but got ({hx[0].dim()}-D, {hx[1].dim()}-D) tensors"
                 )
                 raise RuntimeError(msg)
-            hx = (hx[0].unsqueeze(1))
-
+            hx = hx[0].unsqueeze(1)
 
         hidden_state = []
 
-
         if self.bidirectional:
             next_hidden_f, next_hidden_b = [], []
-            for layer_idx in enumerate(
-                    zip(self.forward_gru, self.backward_gru)
-            ):
+            for layer_idx in enumerate(zip(self.forward_gru, self.backward_gru)):
                 if layer_idx == 0:
                     input_f_state = input
                     input_b_state = input
@@ -164,9 +161,8 @@ class GRU(RNNBase):
                         if self.batch_first
                         else input_b_state[-(i + 1), :, :]
                     )
-                    h_f_i= self.forward_gru(input_f_i)
+                    h_f_i = self.forward_gru(input_f_i)
                     h_b_i = self.backward_gru(input_b_i)
-
 
                     if self.dropout:
                         h_f_i = self.dropout(h_f_i)
@@ -174,7 +170,6 @@ class GRU(RNNBase):
 
                     next_hidden_f.append(h_f_i)
                     next_hidden_b.append(h_b_i)
-
 
                 hidden_state.append(torch.stack(next_hidden_f, dim=sequence_dim))
                 hidden_state.append(torch.stack(next_hidden_b[::-1], dim=sequence_dim))
@@ -196,7 +191,6 @@ class GRU(RNNBase):
                     next_hidden = []
 
                 h_i = hx[layer_idx, :, :]
-
 
                 for i in range(sequence_size):
                     input_i = (
@@ -223,9 +217,7 @@ class GRU(RNNBase):
             else hidden_states[:, -1, :, :]
         )
         # cn = cell_states[:, :, -1, :] if self.batch_first else cell_states[:, -1, :, :]
-        return output,hn
-
-
+        return output, hn
 
     def init_layers(self) -> List[GRUCell]:
         layers = []
