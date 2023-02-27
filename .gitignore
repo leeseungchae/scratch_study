@@ -135,3 +135,7 @@ dmypy.json
 *.en
 *.csv
 data/
+
+outputs/*
+*.ipynb
+
