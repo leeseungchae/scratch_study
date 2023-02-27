@@ -32,11 +32,6 @@ class Encoder(nn.Module):
         )
         self.linear = nn.Linear(hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
-        for m in self.modules():
-            if hasattr(m, "weight") and m.weight.dim() > 1:
-                nn.init.xavier_uniform(m.weight.data)
-            elif isinstance(m, nn.Embedding):
-                nn.init.xavier_normal_(m.weight.data)
 
     def forward(
         self,
@@ -121,12 +116,6 @@ class Decoder(nn.Module):
         )
         self.linear = nn.Linear(hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
-
-        for m in self.modules():
-            if hasattr(m, "weight") and m.weight.dim() > 1:
-                nn.init.xavier_uniform(m.weight.data)
-            elif isinstance(m, nn.Embedding):
-                nn.init.xavier_normal_(m.weight.data)
 
     def forward(
         self, enc_input: Tensor, enc_hidden: Union[Tensor, Tuple[Tensor, Tensor]] = None
