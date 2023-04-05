@@ -2,7 +2,7 @@ import os.path
 
 import torch.optim.optimizer
 from omegaconf import DictConfig
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 from core.base import ABstracTools
 from nlp.utils.utils import count_parameters
@@ -21,12 +21,11 @@ class Trainer(ABstracTools):
         select_weight_initialize_method(
             method=self.arg.model.weight_init,
             distribution=self.arg.model_weight_distribtion,
-            model=self.model
+            model=self.model,
         )
         self.train_loader, self.valid_loader = self.get_loader()
         self.loss_function = nn.CrossEntropyLoss(
-            ignore_index=self.arg.pad_id,
-            label_smoothing=self.arg.label_smoothing_value
+            ignore_index=self.arg.pad_id, label_smoothing=self.arg.label_smoothing_value
         )
 
     def train(self):
@@ -46,12 +45,16 @@ class Trainer(ABstracTools):
                     if step % self.arg.print_train_step == 0:
                         print(
                             "[Train] epoch: {0:2d} iter: {1:4d}/{2:4e} step: {3:6d}/{4:6d} =>"
-                            "loss: {5:10f}".format(epoch, idx, epoch_step, step, total_step, loss.items())
+                            "loss: {5:10f}".format(
+                                epoch, idx, epoch_step, step, total_step, loss.items()
+                            )
                         )
                     if step % self.arg.print_valid_step == 0:
                         print(
                             "[Train] epoch: {0:2d} iter: {1:4d}/{2:4e} step: {3:6d}/{4:6d} =>"
-                            "loss: {5:10f}".format(epoch, idx, epoch_step, step, total_step, loss.items())
+                            "loss: {5:10f}".format(
+                                epoch, idx, epoch_step, step, total_step, loss.items()
+                            )
                         )
 
                     if step % self.arg.save_steps == 0:
@@ -68,16 +71,19 @@ class Trainer(ABstracTools):
         pass
 
     def save_model(self, epoch: int, step: int) -> None:
-        model_name = f'{str(step).zfill(6)}_{self.arg.model.model_type}.pth'
+        model_name = f"{str(step).zfill(6)}_{self.arg.model.model_type}.pth"
         model_path = os.path.join(self.arg.data.model_path, model_name)
         torch.save(
-            {"epoch": epoch,
-             "step": step,
-             "data": self.arg.data,
-             "model": self.arg.model,
-             "trainer": self.arg.trainer,
-             "model_state_dict": self.model.state_dict()
-             }, model_path)
+            {
+                "epoch": epoch,
+                "step": step,
+                "data": self.arg.data,
+                "model": self.arg.model,
+                "trainer": self.arg.trainer,
+                "model_state_dict": self.model.state_dict(),
+            },
+            model_path,
+        )
 
     def valid(self) -> float:
         self.model.eval()
@@ -94,7 +100,7 @@ class Trainer(ABstracTools):
             output.topk(1)[1].squeeze()[0, :].tolist(), self.trg_vocab
         )
         target_sentence = self.tensor2sentence(trg_input[0].tolist(), self.trg_vocab)
-        return total_loss/ len(self.valid_loader)
+        return total_loss / len(self.valid_loader)
 
     def calculate_loss(self, predict: Tensor, target: Tensor) -> Tensor:
         """
@@ -103,7 +109,8 @@ class Trainer(ABstracTools):
         """
         predict = predict.transpose(1, 2)
         return self.loss_function(predict, target)
-    def valid(self) ->float :
+
+    def valid(self) -> float:
         self.model.eval()
         total_loss = 0
         with torch.no_grad():
@@ -112,24 +119,25 @@ class Trainer(ABstracTools):
                 output = self.model(src_input, trg_input)
                 loss = self.calculate_loss(output, trg_output)
                 total_loss += loss.items()
+
     def init_optimizer(self, model: nn.Module) -> None:
         optimizer_type = self.arg.trainer.init_optimize
-        if optimizer_type == 'Adam':
+        if optimizer_type == "Adam":
             self.optimizer = torch.optim.Adam(
                 model.parameters(),
                 lr=self.arg.trainer.learning_rate,
                 betas=(self.arg.trainer.optimizer_b1, self.arg.trainer.optimizer_b2),
                 eps=self.arg.trainer.optimizer_e,
-                weight_decay=self.arg.weight_decay
+                weight_decay=self.arg.weight_decay,
             )
 
-        elif optimizer_type == 'AdamW':
+        elif optimizer_type == "AdamW":
             self.optimizer = torch.optim.Adam(
                 model.parameters(),
                 lr=self.arg.trainer.learning_rate,
                 betas=(self.arg.trainer.optimizer_b1, self.arg.trainer.optimizer_b2),
                 eps=self.arg.trainer.optimizer_e,
-                weight_decay=self.arg.weight_decay
+                weight_decay=self.arg.weight_decay,
             )
         else:
             raise ValueError("trainer param 'optimizer' must be one of [Adam ,AdamW]")
