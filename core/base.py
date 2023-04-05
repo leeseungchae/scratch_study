@@ -4,7 +4,8 @@ import sentencepiece as spm
 from omegaconf import DictConfig
 
 from nlp.model.seq2seq import Seq2Seq
-from nlp.datasets.data_helper import create_or_load_tokenizer
+from nlp.datasets.data_helper import create_or_load_tokenizer, TrainDataset
+from torch.utils.data import DataLoader, RandomSampler
 
 
 class ABstracTools(ABC):
@@ -68,3 +69,52 @@ class ABstracTools(ABC):
         )
 
         return src_vocab, trg_vocab
+
+    def get_loader(self) -> Tuple[DataLoader, DataLoader]:
+        train_dataset = TrainDataset(
+            x_path=self.arg.data.src_train_path,
+            src_vocab=self.src_vocab,
+            y_path=self.arg.data.trg_train_path,
+            trg_vocab=self.trg_vocab,
+            max_sequence_size=self.arg.model.max_sequence_size
+        )
+
+        valid_dataset = TrainDataset(
+            x_path=self.arg.data.src_train_path,
+            src_vocab=self.src_vocab,
+            y_path=self.arg.data.trg_train_path,
+            trg_vocab=self.trg_vocab,
+            max_sequence_size=self.arg.model.max_sequence_size
+        )
+
+        train_sampler = RandomSampler(train_dataset)
+        valid_sampler = RandomSampler(valid_dataset)
+
+        train_loader = DataLoader(dataset=train_dataset,
+                                  sampler=train_sampler,
+                                  batch_size=self.arg.trainer.batch_size)
+
+        valid_loader = DataLoader(dataset=valid_dataset,
+                                  sampler=valid_sampler,
+                                  batch_size=self.arg.trainer.batch_size)
+    @staticmethod
+    def tensor2sentence(indices: Tensor, vocab:spm.SentencePieceProcessor) ->str:
+        result = []
+        for idx in indices:
+            word = vocab.IdToPiece(idx)
+            if word == 'pad':
+                break
+            result.append(word)
+
+        return "".join(result).replace("_", " ").strip()
+
+    @staticmethod
+    def print_result(
+            input_sentence:str,
+            predict_sentence:str,
+            target_sentence:str
+    ) ->None:
+        print(f"------Test-----")
+        print(f"Source  : {input_sentence}")
+        print(f"Predict : {predict_sentence}")
+        print(f"Target  : {target_sentence}")
