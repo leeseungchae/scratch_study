@@ -125,3 +125,7 @@ class ABstracTools(ABC):
         print(f"Source  : {input_sentence}")
         print(f"Predict : {predict_sentence}")
         print(f"Target  : {target_sentence}")
+        from nlp.utils.metrics import bleu_score as cal_blue_score
+        bluescore = cal_blue_score(input_sentence, predict_sentence)
+
+
