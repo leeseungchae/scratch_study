@@ -1,15 +1,15 @@
 epochs : 100
 learning_rate : 5e-4
-
+batch_size : 32
 #logging
 save_steps: 1000
 print_train_step: 10
 print_valid_step: 100
 
 optimizer : "Adam"
-optimizer_b1 : "0.9"
-optimizer_b2 : "0.999"
-optimizer_e : "le-08"
+optimizer_b1 : 0.9
+optimizer_b2 : 0.999
+optimizer_e : 1e-08
 weight_decay : 0
 
 label_smoothing_value : 0.1

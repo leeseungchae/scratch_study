@@ -10,7 +10,7 @@ from torch import Tensor
 class Encoder(nn.Module):
     def __init__(
         self,
-        output_size: int,
+        input_size: int,
         hidden_size: int,
         n_layers: int,
         dropout: float,
@@ -20,7 +20,7 @@ class Encoder(nn.Module):
         bidirectional: bool = False,
     ) -> None:
         super().__init__()
-        self.embedding = nn.Embedding(output_size, hidden_size)
+        self.embedding = nn.Embedding(input_size, hidden_size)
         self.layers = self.select_mode(
             mode=mode,
             hidden_size=hidden_size,
@@ -30,7 +30,7 @@ class Encoder(nn.Module):
             dropout=dropout,
             batch_first=batch_first,
         )
-        self.linear = nn.Linear(hidden_size, output_size)
+        self.linear = nn.Linear(hidden_size, input_size)
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(
@@ -41,6 +41,7 @@ class Encoder(nn.Module):
         embeded = self.embedding(dnc_input)
         relu_embeded = F.relu(embeded)
         output, hidden = self.layers(embeded, relu_embeded)
+        print(f'layer_output: {output.size()}')
         output = self.softmax(self.linear(output))
         return output, hidden
 
@@ -94,7 +95,7 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(
         self,
-        output_size: int,
+        input_size: int,
         hidden_size: int,
         n_layers: int,
         dropout: float,
@@ -104,7 +105,7 @@ class Decoder(nn.Module):
         bidirectional: bool = False,
     ) -> None:
         super().__init__()
-        self.embedding = nn.Embedding(hidden_size, output_size)
+        self.embedding = nn.Embedding(input_size, hidden_size)
         self.layers = self.select_mode(
             mode=mode,
             hidden_size=hidden_size,
@@ -114,7 +115,10 @@ class Decoder(nn.Module):
             dropout=dropout,
             batch_first=batch_first,
         )
-        self.linear = nn.Linear(hidden_size, output_size)
+        if bidirectional:
+            hidden_size *= 2
+
+        self.linear = nn.Linear(hidden_size, input_size)
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(
@@ -123,7 +127,7 @@ class Decoder(nn.Module):
         embeded = self.embedding(enc_input)
         relu_embeded = F.relu(embeded)  # 논문에는 없는 것
         output, hidden = self.layers(relu_embeded)
-        output = self.softmax(self.linear(output[0]))
+        output = self.softmax(self.linear(output))
         return output, hidden
 
     def select_mode(
@@ -189,8 +193,20 @@ class Seq2Seq(nn.Module):
     ) -> None:
 
         super().__init__()
-        self.encoder = Decoder(
-            output_size=enc_d_input,
+        self.encoder = Encoder(
+            input_size=enc_d_input,
+            hidden_size=d_hidden,
+            n_layers=n_layers,
+            dropout=dropout_rate,
+            mode=mode,
+            bidirectional=bidirectional,
+            bias=bias,
+            batch_first=batch_first,
+        )
+
+
+        self.decoder = Decoder(
+            input_size=dec_d_input,
             hidden_size=d_hidden,
             n_layers=n_layers,
             dropout=dropout_rate,

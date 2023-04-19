@@ -1,3 +1,5 @@
+import os
+
 import hydra
 from omegaconf import DictConfig
 
@@ -11,4 +13,5 @@ def train(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
+    print(os.getcwd())
     train()

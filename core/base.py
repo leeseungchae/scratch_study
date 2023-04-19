@@ -3,6 +3,7 @@ from typing import Any, Dict, Tuple
 
 import sentencepiece as spm
 from omegaconf import DictConfig
+from torch import Tensor
 from torch.utils.data import DataLoader, RandomSampler
 
 from nlp.datasets.data_helper import TrainDataset, create_or_load_tokenizer
@@ -12,7 +13,7 @@ from nlp.model.seq2seq import Seq2Seq
 class ABstracTools(ABC):
     def __init__(self, cfg: DictConfig) -> None:
         self.arg = cfg
-        self.src_vocab = self.trg_vocab = self.get_vocab()
+        self.src_vocab, self.trg_vocab = self.get_vocab()
 
     def get_params(self) -> Dict[str, Any]:
         model_type = self.arg.model.model_type
@@ -53,7 +54,7 @@ class ABstracTools(ABC):
             file_path=self.arg.data.src_train_path,
             save_path=self.arg.data.dictionary_path,
             language=self.arg.data.src_language,
-            vocab_size=self.arg.data.src_language,
+            vocab_size=self.arg.data.src_vocab_size,
             tokenizer_type=self.arg.data.tokenizer,
             bos_id=self.arg.data.bos_id,
             eos_id=self.arg.data.eos_id,
@@ -64,7 +65,7 @@ class ABstracTools(ABC):
             file_path=self.arg.data.trg_train_path,
             save_path=self.arg.data.dictionary_path,
             language=self.arg.data.trg_language,
-            vocab_size=self.arg.data.trg_language,
+            vocab_size=self.arg.data.trg_vocab_size,
             tokenizer_type=self.arg.data.tokenizer,
             bos_id=self.arg.data.bos_id,
             eos_id=self.arg.data.eos_id,
@@ -105,6 +106,7 @@ class ABstracTools(ABC):
             sampler=valid_sampler,
             batch_size=self.arg.trainer.batch_size,
         )
+        return train_loader,valid_loader
 
     @staticmethod
     def tensor2sentence(indices: Tensor, vocab: spm.SentencePieceProcessor) -> str:

@@ -1,4 +1,3 @@
-# bleu score 구하는 코드 작성
 from collections import Counter
 
 import numpy as np
@@ -10,8 +9,6 @@ from nltk import ngrams
 # 토큰화 된 문장(tokens)에서 n-gram을 카운트
 def simple_count(tokens, n):
     return Counter(ngrams(tokens, n))
-
-
 #
 
 def count_clip(candidate: str, reference_list: str, n: int):
@@ -74,9 +71,7 @@ def brevity_penalty(candidate, reference_list):
         return np.exp(1 - ref_len / ca_len)
 
 
-def bleu_score(candidate, reference_list, weights=None):
-    if weights is None:
-        weights = [0.25, 0.25, 0.25, 0.25]
+def bleu_score(candidate, reference_list, weights=[0.25, 0.25, 0.25, 0.25]):
     bp = brevity_penalty(candidate, reference_list)  # 브레버티 패널티, BP
 
     p_n = [modified_precision(candidate, reference_list, n=n) for n, _ in enumerate(weights, start=1)]
@@ -94,10 +89,11 @@ def bleu_score(candidate, reference_list, weights=None):
 candidate = "빛이 쐬는 노인은 완벽한 어두운곳에서 잠든 사람과 비교할 때 강박증이 심해질 기회가 훨씬 높았다"
 references = ["빛이 쐬는 사람은 완벽한 어둠에서 잠든 사람과 비교할 때 우울증이 심해질 가능성이 훨씬 높았다"]
 
+
 import nltk.translate.bleu_score as bleu
 
-print('실습 코드의 BLEU :', bleu_score(candidate.split(), list(map(lambda ref: ref.split(), references))))
-print('패키지 NLTK의 BLEU :', bleu.sentence_bleu(list(map(lambda ref: ref.split(), references)), candidate.split()))
+print('실습 코드의 BLEU :',bleu_score(candidate.split(),list(map(lambda ref: ref.split(), references))))
+print('패키지 NLTK의 BLEU :',bleu.sentence_bleu(list(map(lambda ref: ref.split(), references)),candidate.split()))
 
 # result = bleu_score(candidate.split(), list(map(lambda ref: ref.split(), references)), n=1)
 # print('보정된 유니그램 정밀도 :', result)
