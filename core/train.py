@@ -45,7 +45,7 @@ class Trainer(ABstracTools):
                     output = self.model(src_input, trg_input)
                     loss = self.calculate_loss(output, trg_output)
 
-                    if step % self.arg.print_train_step == 0:
+                    if step % self.arg.trainer.print_train_step == 0:
                         wandb.log({"Train_loss": loss.item()})
                         print(
                             "[Train] epoch: {0:2d} iter: {1:4d}/{2:4e} step: {3:6d}/{4:6d} =>"
@@ -53,7 +53,7 @@ class Trainer(ABstracTools):
                                 epoch, idx, epoch_step, step, total_step, loss.item()
                             )
                         )
-                    if step % self.arg.print_valid_step == 0:
+                    if step % self.arg.trainer.print_valid_step == 0:
                         val_loss = self.valid()
                         wandb.log({"Train_loss": val_loss})
                         print(
@@ -98,7 +98,7 @@ class Trainer(ABstracTools):
                 src_input, trg_input, trg_output = data
                 output = self.model(src_input, trg_input)
                 loss = self.calculate_loss(output, trg_output)
-                total_loss += loss.items()
+                total_loss += loss.item()
 
         input_sentence = self.tensor2sentence(src_input[0].tolist(), self.src_vocab)
         predict_sentence = self.tensor2sentence(

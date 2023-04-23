@@ -42,7 +42,7 @@ def create_or_load_tokenizer(
 
     if not exist_file(model_path) and not exist_file(vocab_path):
         model_train_cmd = f"--input={file_path} --model_prefix={corpus_prefix} --model_type={tokenizer_type} --vocab_size={vocab_size} --bos_id={bos_id} --eos_id={eos_id} --unk_id={unk_id} --pad_id={pad_id}"
-        # print(model_train_cmd)
+        print(model_train_cmd)
         spm.SentencePieceTrainer.Train(model_train_cmd)
         shutil.move(corpus_prefix + ".model", model_path)
         shutil.move(corpus_prefix + ".vocab", vocab_path)

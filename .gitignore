@@ -119,8 +119,6 @@ venv.bak/
 
 # mkdocs documentation
 /site
-/SavedModel/*
-/wandb/*
 
 # mypy
 .mypy_cache/
@@ -130,14 +128,14 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-
 *.model
 *.vocab
 *.ko
 *.en
-*.csv
-data/
-
+.DS_Store
 outputs/*
-*.ipynb
+*.csv
+*ipynb
 
+wandb
+SavedModel
