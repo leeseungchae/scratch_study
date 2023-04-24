@@ -15,5 +15,6 @@ def train(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
+    print("git_test")
     train()
     # python main.py hydra.job.chdir=False
