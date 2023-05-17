@@ -66,7 +66,6 @@ class AbstractDataset(Dataset, metaclass=ABCMeta):
         print(src_vocab)
         self.pad = src_vocab["<pad>"]
 
-
     @abstractmethod
     def __len__(self):
         pass

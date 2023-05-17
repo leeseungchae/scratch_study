@@ -1,10 +1,10 @@
 import os.path
 
 import torch.optim.optimizer
-import wandb
 from omegaconf import DictConfig
 from torch import Tensor, nn
 
+import wandb
 from core.base import ABstracTools
 from nlp.utils.utils import count_parameters
 from nlp.utils.weight_initialization import select_weight_initialize_method
@@ -25,14 +25,15 @@ class Trainer(ABstracTools):
         )
         self.train_loader, self.valid_loader = self.get_loader()
         self.loss_function = nn.CrossEntropyLoss(
-            ignore_index=self.arg.data.pad_id, label_smoothing=self.arg.trainer.label_smoothing_value
+            ignore_index=self.arg.data.pad_id,
+            label_smoothing=self.arg.trainer.label_smoothing_value,
         )
 
-        wandb.init(config=self.arg)
+        # wandb.init(config=self.arg)
 
     def train(self):
         print(f"The model{count_parameters(self.model)} trainerble parameters")
-        wandb.watch(self.model)
+        # wandb.watch(self.model)
 
         epoch_step = len(self.train_loader) + 1
         total_step = self.arg.trainer.epochs * epoch_step
@@ -146,4 +147,3 @@ class Trainer(ABstracTools):
             )
         else:
             raise ValueError("trainer param 'optimizer' must be one of [Adam ,AdamW]")
-

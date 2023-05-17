@@ -7,6 +7,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader, RandomSampler
 
 from nlp.datasets.data_helper import TrainDataset, create_or_load_tokenizer
+from nlp.model.attention import Seq2SeqWithAttention
 from nlp.model.seq2seq import Seq2Seq
 
 
@@ -32,6 +33,20 @@ class ABstracTools(ABC):
                 "batch_first": self.arg.model.batch_first,
                 "max_sequence_size": self.arg.model.max_sequence_size,
             }
+        elif model_type == "attention":
+            params = {
+                "enc_d_input": self.arg.data.src_vocab_size,
+                "dec_d_input": self.arg.data.trg_vocab_size,
+                "d_hidden": self.arg.model.d_hidden,
+                "n_layers": self.arg.model.n_layers,
+                "mode": self.arg.model.mode,
+                "dropout_rate": self.arg.model.dropout_rate,
+                "bidirectional": self.arg.model.bidirectional,
+                "bias": self.arg.model.bias,
+                "batch_first": self.arg.model.batch_first,
+                "max_sequence_size": self.arg.model.max_sequence_size,
+            }
+
         else:
             raise ValueError("param 'model_type' must be one of [seq2seq]")
         return params
@@ -41,6 +56,8 @@ class ABstracTools(ABC):
         params = self.get_params()
         if model_type == "seq2seq":
             model = Seq2Seq(**params)
+        elif model_type == "attention":
+            model = Seq2SeqWithAttention(**params)
         else:
             raise ValueError("param 'model_type' must be one of [Seq2seq]")
 
@@ -49,7 +66,6 @@ class ABstracTools(ABC):
     def get_vocab(
         self,
     ) -> Tuple[spm.SentencePieceProcessor, spm.SentencePieceProcessor]:
-
         src_vocab = create_or_load_tokenizer(
             file_path=self.arg.data.src_train_path,
             save_path=self.arg.data.dictionary_path,
@@ -106,7 +122,7 @@ class ABstracTools(ABC):
             sampler=valid_sampler,
             batch_size=self.arg.trainer.batch_size,
         )
-        return train_loader,valid_loader
+        return train_loader, valid_loader
 
     @staticmethod
     def tensor2sentence(indices: Tensor, vocab: spm.SentencePieceProcessor) -> str:
@@ -128,6 +144,5 @@ class ABstracTools(ABC):
         print(f"Predict : {predict_sentence}")
         print(f"Target  : {target_sentence}")
         from nlp.utils.metrics import bleu_score as cal_blue_score
+
         bluescore = cal_blue_score(input_sentence, predict_sentence)
-
-
