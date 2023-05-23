@@ -28,6 +28,7 @@ class Scaled_dot_product_Attention(nn.Module):
             _type_: _description_
             :param mask:
         """
+        #https://cpm0722.github.io/pytorch-implementation/transformer
         # 벡터의 차원을 얻음
         d_k = query.size(-1)
         print(d_k)
