@@ -47,6 +47,21 @@ class ABstracTools(ABC):
                 "max_sequence_size": self.arg.model.max_sequence_size,
             }
 
+        elif model_type == "transformer":
+            params = {
+                "enc_d_input": self.arg.data.src_vocab_size,
+                "dec_d_input": self.arg.data.trg_vocab_size,
+                "d_hidden": self.arg.model.d_hidden,
+                "n_layers": self.arg.model.n_layers,
+                "mode": self.arg.model.mode,
+                "dropout_rate": self.arg.model.dropout_rate,
+                "bidirectional": self.arg.model.bidirectional,
+                "bias": self.arg.model.bias,
+                "batch_first": self.arg.model.batch_first,
+                "max_sequence_size": self.arg.model.max_sequence_size,
+                "padding_id": self.arg.data.pad_id,
+            }
+
         else:
             raise ValueError("param 'model_type' must be one of [seq2seq]")
         return params
