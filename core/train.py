@@ -113,7 +113,13 @@ class Trainer(ABstracTools):
 
         :rtype: object
         """
+        # print('predict', predict)
         predict = predict.transpose(1, 2)
+        print('predict_size',predict.size())
+        print('target_size',target.size())
+
+
+
         return self.loss_function(predict, target)
 
     def valid(self) -> float:
