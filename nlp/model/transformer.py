@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+from nlp.utils.utils import get_device
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -397,6 +399,7 @@ class Transformer(nn.Module):
         padding_id: int = 3,
     ) -> None:
         super().__init__()
+        self.device = get_device()
         self.encoder = Encoder(
             input_dim=enc_d_input,
             d_hidden=d_hidden,
@@ -407,7 +410,7 @@ class Transformer(nn.Module):
             max_sequence=max_sequence_size,
             padding_id=padding_id,
             dropout=dropout_rate,
-        )
+        ).to(self.device)
         self.decoder = Decoder(
             input_dim=dec_d_input,
             d_hidden=d_hidden,
@@ -418,7 +421,7 @@ class Transformer(nn.Module):
             max_sequence=max_sequence_size,
             padding_id=padding_id,
             dropout=dropout_rate,
-        )
+        ).to(self.device)
 
     def forward(self, enc_inputs: Tensor, dec_input: Tensor) -> Tensor:
         """Transformer

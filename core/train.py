@@ -16,6 +16,7 @@ class Trainer(ABstracTools):
         self.model = self.get_model()
         self.model.train()
         self.init_optimizer()
+        self.device = get_device()
         print(f"The model {count_parameters(self.model)}")
 
         select_weight_initialize_method(
@@ -115,6 +116,9 @@ class Trainer(ABstracTools):
         """
         # print('predict', predict)
         predict = predict.transpose(1, 2)
+        if self.device.type == "mps":
+            predict = predict.to(device="cpu")
+            target = target.to(device="cpu")
         # print('predict_size',predict.size())
         # print('target_size',target.size())
 
