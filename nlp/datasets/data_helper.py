@@ -63,9 +63,9 @@ class AbstractDataset(Dataset, metaclass=ABCMeta):
         self.src_data = open(x_path, "r", encoding="utf-8").readlines()
         self.src_vocab = src_vocab
         self.max_sequence_size = max_sequence_size
+        self.device = get.device()
         print(src_vocab)
         self.pad = src_vocab["<pad>"]
-
 
     @abstractmethod
     def __len__(self):

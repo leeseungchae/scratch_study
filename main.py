@@ -16,4 +16,4 @@ def train(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     train()
-    # python main.py hydra.job.chdir=False
+    # export HYDRA_FULL_ERROR = 1 python main.py hydra.job.chdir=False

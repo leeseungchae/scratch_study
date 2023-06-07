@@ -1,10 +1,10 @@
 import os.path
 
 import torch.optim.optimizer
-import wandb
 from omegaconf import DictConfig
 from torch import Tensor, nn
 
+import wandb
 from core.base import ABstracTools
 from nlp.utils.utils import count_parameters
 from nlp.utils.weight_initialization import select_weight_initialize_method
@@ -16,6 +16,7 @@ class Trainer(ABstracTools):
         self.model = self.get_model()
         self.model.train()
         self.init_optimizer()
+        self.device = get_device()
         print(f"The model {count_parameters(self.model)}")
 
         select_weight_initialize_method(
@@ -25,7 +26,8 @@ class Trainer(ABstracTools):
         )
         self.train_loader, self.valid_loader = self.get_loader()
         self.loss_function = nn.CrossEntropyLoss(
-            ignore_index=self.arg.data.pad_id, label_smoothing=self.arg.trainer.label_smoothing_value
+            ignore_index=self.arg.data.pad_id,
+            label_smoothing=self.arg.trainer.label_smoothing_value,
         )
 
         wandb.init(config=self.arg)
@@ -112,7 +114,14 @@ class Trainer(ABstracTools):
 
         :rtype: object
         """
+        # print('predict', predict)
         predict = predict.transpose(1, 2)
+        if self.device.type == "mps":
+            predict = predict.to(device="cpu")
+            target = target.to(device="cpu")
+        # print('predict_size',predict.size())
+        # print('target_size',target.size())
+
         return self.loss_function(predict, target)
 
     def valid(self) -> float:
@@ -146,4 +155,3 @@ class Trainer(ABstracTools):
             )
         else:
             raise ValueError("trainer param 'optimizer' must be one of [Adam ,AdamW]")
-

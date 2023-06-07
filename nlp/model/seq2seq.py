@@ -20,6 +20,8 @@ class Encoder(nn.Module):
         bidirectional: bool = False,
     ) -> None:
         super().__init__()
+        self.bidirectional = bidirectional
+
         self.embedding = nn.Embedding(input_size, hidden_size)
         self.layers = self.select_mode(
             mode=mode,
@@ -30,6 +32,8 @@ class Encoder(nn.Module):
             dropout=dropout,
             batch_first=batch_first,
         )
+        if bidirectional:
+            self.fc = nn.Linear(hidden_size * 2, hidden_size)
 
     def forward(
         self,
@@ -38,6 +42,8 @@ class Encoder(nn.Module):
     ):
         embeded = self.embedding(enc_input)
         output, hidden = self.layers(embeded, enc_hidden)
+        if self.bidirectional:
+            output = self.fc(output)
         return output, hidden
 
     def select_mode(
@@ -112,7 +118,7 @@ class Decoder(nn.Module):
         )
         if bidirectional:
             hidden_size *= 2
-        self.linear = nn.Linear(hidden_size, output_size) # [hidden_size, output_size]
+        self.linear = nn.Linear(hidden_size, output_size)  # [hidden_size, output_size]
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(
