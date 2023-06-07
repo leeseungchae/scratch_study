@@ -29,11 +29,11 @@ class Trainer(ABstracTools):
             label_smoothing=self.arg.trainer.label_smoothing_value,
         )
 
-        # wandb.init(config=self.arg)
+        wandb.init(config=self.arg)
 
     def train(self):
         print(f"The model{count_parameters(self.model)} trainerble parameters")
-        # wandb.watch(self.model)
+        wandb.watch(self.model)
 
         epoch_step = len(self.train_loader) + 1
         total_step = self.arg.trainer.epochs * epoch_step
@@ -115,10 +115,8 @@ class Trainer(ABstracTools):
         """
         # print('predict', predict)
         predict = predict.transpose(1, 2)
-        print('predict_size',predict.size())
-        print('target_size',target.size())
-
-
+        # print('predict_size',predict.size())
+        # print('target_size',target.size())
 
         return self.loss_function(predict, target)
 

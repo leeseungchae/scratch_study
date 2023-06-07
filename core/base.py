@@ -67,7 +67,6 @@ class ABstracTools(ABC):
         else:
             raise ValueError(
                 "param `model_type` must be one of [seq2seq, attention, transformer]"
-
             )
         return params
 

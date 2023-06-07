@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def get_position_encoding_table(max_sequence_size: int, d_hidden: int) -> Tensor:
@@ -22,39 +22,49 @@ def get_position_encoding_table(max_sequence_size: int, d_hidden: int) -> Tensor
     return pe_table
 
 
-def get_attn_pad_mask(seq_q: Tensor, seq_k: Tensor, padding_id: int) -> Tensor:
-    pad_attn_mask = seq_k.data.eq(padding_id).unsqueeze(1)
+def get_position(inputs: Tensor) -> Tensor:
+    position = (
+        torch.arange(inputs.size(1), device=inputs.device, dtype=inputs.dtype)
+        .expand(inputs.size(0), inputs.size(1))
+        .contiguous()
+    )  # -> [bs, max_seq_size]
+    return position
+
+
+def get_padding_mask(inputs: Tensor, padding_id: int) -> Tensor:
+    pad_attn_mask = inputs.data.eq(padding_id).unsqueeze(1)
     return pad_attn_mask.expand(
-        seq_k.size(0), seq_q.size(1), seq_k.size(1)).contiguous()
+        inputs.size(0), inputs.size(1), inputs.size(1)
+    ).contiguous()
 
 
-# def get_attn_decoder_mask(dec_input: Tensor) -> Tensor:
-#     subsequent_mask = (
-#         torch.ones_like(dec_input)
-#         .unsqueeze(-1)
-#         .expand(dec_input.size(0), dec_input.size(1), dec_input.size(1))
-#     )  # => [batch_size, seq_len, seq_len]
-#     subsequent_mask = subsequent_mask.triu(
-#         diagonal=1
-#     )  # upper triangular part of a matrix(2-D) => [batch_size, seq_len, seq_len]
+def get_look_ahead_mask(inputs: Tensor) -> Tensor:
+    look_ahead_mask = (
+        torch.ones_like(inputs)
+        .unsqueeze(-1)
+        .expand(inputs.size(0), inputs.size(1), inputs.size(1))
+    )  # => [batch_size, seq_len, seq_len]
+    look_ahead_mask = look_ahead_mask.triu(
+        diagonal=1
+    )  # upper triangular part of a matrix(2-D) => [batch_size, seq_len, seq_len]
+    return look_ahead_mask.eq(0)
+
+
+# def get_attn_decoder_mask(dec_input: torch.Tensor) -> torch.Tensor:
+#     batch_size, seq_len = dec_input.size(0), dec_input.size(1)
+#     subsequent_mask = torch.triu(torch.ones((seq_len, seq_len), dtype=torch.bool, device=dec_input.device), diagonal=1)
+#     subsequent_mask = subsequent_mask.unsqueeze(0).expand(batch_size, -1, -1)  # Expand the mask to match the batch size
 #     return subsequent_mask
-
-def get_attn_decoder_mask(dec_input: torch.Tensor) -> torch.Tensor:
-    batch_size, seq_len = dec_input.size(0), dec_input.size(1)
-    subsequent_mask = torch.triu(torch.ones((seq_len, seq_len), dtype=torch.bool, device=dec_input.device), diagonal=1)
-    subsequent_mask = subsequent_mask.unsqueeze(0).expand(batch_size, -1, -1)  # Expand the mask to match the batch size
-    return subsequent_mask
-
 
 
 class ScaledDotProductAttention(nn.Module):
     def __init__(self, head_dim: int, dropout_rate: float = 0.0) -> None:
         super().__init__()
         self.dropout = nn.Dropout(dropout_rate)
-        self.scale = head_dim ** 0.5
+        self.scale = head_dim**0.5
 
     def forward(
-            self, query: Tensor, key: Tensor, value: Tensor, attion_mask: Tensor
+        self, query: Tensor, key: Tensor, value: Tensor, attion_mask: Tensor
     ) -> Tuple[Tensor, Tensor]:
         """dot product attention
 
@@ -70,10 +80,11 @@ class ScaledDotProductAttention(nn.Module):
         scores = torch.matmul(query, key.transpose(-1, -2)) / self.scale
         # print('scores', scores.size())
         # => [bs, n_heads, len_q(max_seq_size), len_k(max_seq_size)]
-        # Todo : score masking되는지 확인  -> 1차원 늘려야함
+        # Todo : score masking되는지 확인  -
         # attion_mask = attion_mask.unsqueeze(1).repeat(1, 8, 1, 1)
         # print('attention_mask',attion_mask)
-        print('scroes',scores.size())
+        # print('scroes', scores.size())
+
         scores.masked_fill_(attion_mask, -1e9)
         attn_prob = nn.Softmax(dim=-1)(scores)
         attn_prob = self.dropout(attn_prob)
@@ -87,7 +98,7 @@ class ScaledDotProductAttention(nn.Module):
 
 class MultiHeadAttention(nn.Module):
     def __init__(
-            self, d_hidden: int, n_heads: int, head_dim: int, dropout: float = 0
+        self, d_hidden: int, n_heads: int, head_dim: int, dropout: float = 0
     ) -> None:
         super().__init__()
         self.weight_q = nn.Linear(d_hidden, n_heads * head_dim)
@@ -115,8 +126,8 @@ class MultiHeadAttention(nn.Module):
         """
         batch_size = query.size(0)
 
-        print("query: ", query.size())
-        print("weight_q(query): ", self.weight_q)
+        # print("query: ", query.size())
+        # print("weight_q(query): ", self.weight_q)
 
         q_s = (
             self.weight_q(query)
@@ -136,7 +147,7 @@ class MultiHeadAttention(nn.Module):
             .transpose(1, 2)
         )
         # => [batch_size, n_heads, max_seq_len, head_dim]
-        attn_mask = attn_mask.unsqueeze(1).repeat(1, self.n_heads, 1, 1).to(device)
+        attn_mask = attn_mask.unsqueeze(1).repeat(1, self.n_heads, 1, 1)
         context, _ = self.self_attention(
             q_s, k_s, v_s, attn_mask
         )  # => [batch_size, n_heads, max_seq_len, head_dim]
@@ -154,7 +165,7 @@ class MultiHeadAttention(nn.Module):
 
 class PoswiseFeedForwardNet(nn.Module):
     def __init__(
-            self, d_hidden: int, ff_dim: int, dropout: float = 0, layer_type: str = "linear"
+        self, d_hidden: int, ff_dim: int, dropout: float = 0, layer_type: str = "linear"
     ) -> None:
         super().__init__()
         if layer_type == "linear":
@@ -176,13 +187,13 @@ class PoswiseFeedForwardNet(nn.Module):
 
 class EncoderLayer(nn.Module):
     def __init__(
-            self,
-            d_hidden: int,
-            n_heads: int,
-            head_dim: int,
-            ff_dim: int,
-            dropout: float = 0,
-            layer_norm_epsilon: float = 1e-12,
+        self,
+        d_hidden: int,
+        n_heads: int,
+        head_dim: int,
+        ff_dim: int,
+        dropout: float = 0,
+        layer_norm_epsilon: float = 1e-12,
     ) -> None:
         super().__init__()
         self.mh_attention = MultiHeadAttention(
@@ -200,46 +211,49 @@ class EncoderLayer(nn.Module):
         )
         mh_output = self.layer_norm1(enc_inputs + mh_output)
         ffnn_output = self.ffnn(mh_output)
-        ffnn_output = self.layer_norm2(ffnn_output)
+        ffnn_output = self.layer_norm2(ffnn_output + mh_output)
         return ffnn_output
 
 
 class Encoder(nn.Module):
     def __init__(
-            self,
-            input_dim: int,
-            d_hidden: int,
-            n_layers: int,
-            n_heads: int,
-            head_dim: int,
-            ff_dim: int,
-            max_sequence: int,
-            padding_id: int,
-            dropout: float = 0.0,
+        self,
+        input_dim: int,
+        d_hidden: int,
+        n_layers: int,
+        n_heads: int,
+        head_dim: int,
+        ff_dim: int,
+        max_sequence: int,
+        padding_id: int,
+        dropout: float = 0.0,
     ) -> None:
         super().__init__()
         self.src_emb = nn.Embedding(input_dim, d_hidden)
         pe_table = get_position_encoding_table(max_sequence, d_hidden)
         self.pos_emb = nn.Embedding.from_pretrained(pe_table, freeze=True)
-        self.layers = nn.ModuleList([
-            EncoderLayer(
-                d_hidden=d_hidden,
-                n_heads=n_heads,
-                head_dim=head_dim,
-                ff_dim=ff_dim,
-                dropout=dropout
-            ) for _ in range(n_layers)]
+        self.layers = nn.ModuleList(
+            [
+                EncoderLayer(
+                    d_hidden=d_hidden,
+                    n_heads=n_heads,
+                    head_dim=head_dim,
+                    ff_dim=ff_dim,
+                    dropout=dropout,
+                )
+                for _ in range(n_layers)
+            ]
         )
         self.padding_id = padding_id
 
     def forward(self, enc_inputs: Tensor):
-        position = self.get_position(enc_inputs=enc_inputs)
+        position = get_position(inputs=enc_inputs)
         # print(self.src_emb(enc_inputs))
         # print(self.pos_emb(position))
         # print('src_emb',self.src_emb(enc_inputs))
         conb_emb = self.src_emb(enc_inputs) + self.pos_emb(position)
-        enc_self_attn_mask = get_attn_pad_mask(
-            enc_inputs, enc_inputs, self.padding_id
+        enc_self_attn_mask = get_padding_mask(
+            enc_inputs, self.padding_id
         )  # =>[batch_size, max_seq_size, max_seq_size]
         enc_outputs = conb_emb
         for layer in self.layers:
@@ -249,64 +263,69 @@ class Encoder(nn.Module):
 
         # enc_self_attn_mask =
 
-    def get_position(self, enc_inputs: Tensor) -> Tensor:
-        position = (
-                torch.arange(
-                    enc_inputs.size(1), device=enc_inputs.device, dtype=enc_inputs.dtype
-                )
-                .expand(enc_inputs.size(0), enc_inputs.size(1))
-                .contiguous()
-                + 1
-        )  # -> [bs, max_seq_size]
-        pos_mask = enc_inputs.eq(
-            self.padding_id
-        )  # padding은 True, padding 아닌 것 False 로 벡터를 만들어줌
-        position.masked_fill_(pos_mask, 0)
-        return position
-
 
 class DecoderLayer(nn.Module):
     def __init__(
-            self,
-            d_hidden: int,
-            n_heads: int,
-            head_dim: int,
-            ff_dim: int,
-            dropout: float = 0,
-            layer_norm_epsilon: float = 1e-12,
+        self,
+        d_hidden: int,
+        n_heads: int,
+        head_dim: int,
+        ff_dim: int,
+        dropout: float = 0,
+        layer_norm_epsilon: float = 1e-12,
     ) -> None:
         super().__init__()
-        self.mh_attention = MultiHeadAttention(
+        self.masked_mh = MultiHeadAttention(
             d_hidden=d_hidden, n_heads=n_heads, head_dim=head_dim, dropout=dropout
         )
         self.layer_norm1 = nn.LayerNorm(d_hidden, eps=layer_norm_epsilon)
+        self.enc_dec_mh = MultiHeadAttention(
+            d_hidden=d_hidden, n_heads=n_heads, head_dim=head_dim, dropout=dropout
+        )
+        self.layer_norm2 = nn.LayerNorm(d_hidden, eps=layer_norm_epsilon)
         self.ffnn = PoswiseFeedForwardNet(
             d_hidden=d_hidden, ff_dim=ff_dim, dropout=dropout
         )
-        self.layer_norm2 = nn.LayerNorm(d_hidden, eps=layer_norm_epsilon)
+        self.layer_norm3 = nn.LayerNorm(d_hidden, eps=layer_norm_epsilon)
 
-    def forward(self, dec_inputs: Tensor, dec_self_attn_mask: Tensor) -> Tensor:
-        mh_output = self.mh_attention(
+    def forward(
+        self,
+        dec_inputs: Tensor,
+        enc_outputs: Tensor,
+        dec_self_attn_mask: Tensor,
+        dec_enc_padding_mask,
+    ) -> Tensor:
+        masked_mh_output = self.masked_mh(
             dec_inputs, dec_inputs, dec_inputs, dec_self_attn_mask
         )
-        mh_output = self.layer_norm1(dec_inputs + mh_output)
-        ffnn_output = self.ffnn(mh_output)
-        ffnn_output = self.layer_norm2(ffnn_output)
+        masked_mh_output = self.layer_norm1(masked_mh_output + dec_inputs)
+
+        enc_dec_mh_output = self.enc_dec_mh(
+            query=masked_mh_output,
+            key=enc_outputs,
+            value=enc_outputs,
+            attn_mask=dec_enc_padding_mask,
+        )
+        enc_dec_mh_output = self.layer_norm2(enc_dec_mh_output + masked_mh_output)
+
+        ffnn_output = self.ffnn(enc_dec_mh_output)
+        ffnn_output = self.layer_norm3(ffnn_output + enc_dec_mh_output)
+
         return ffnn_output
 
 
 class Decoder(nn.Module):
     def __init__(
-            self,
-            input_dim: int,
-            d_hidden: int,
-            n_layers: int,
-            n_heads: int,
-            head_dim: int,
-            ff_dim: int,
-            max_sequence: int,
-            padding_id: int,
-            dropout: float = 0.0,
+        self,
+        input_dim: int,
+        d_hidden: int,
+        n_layers: int,
+        n_heads: int,
+        head_dim: int,
+        ff_dim: int,
+        max_sequence: int,
+        padding_id: int,
+        dropout: float = 0.0,
     ) -> None:
         super().__init__()
         self.src_emb = nn.Embedding(input_dim, d_hidden)
@@ -325,63 +344,57 @@ class Decoder(nn.Module):
             ]
         )
         self.padding_id = padding_id
+        self.classifier = nn.Linear(d_hidden, input_dim)
 
     def forward(self, dec_inputs: Tensor, enc_output: Tensor):
-        position = self.get_position(dec_inputs=dec_inputs)
+        position = get_position(inputs=dec_inputs)
         conb_emb = self.src_emb(dec_inputs) + self.pos_emb(position)
         # Embedding + pos_enbeding : [batch_size, max_seq_size, d_hidden]
-        dec_self_attn_mask = get_attn_pad_mask(
-            dec_inputs, dec_inputs, self.padding_id
+        padding_mask = get_padding_mask(
+            dec_inputs, self.padding_id
         )  # =>[batch_size, max_seq_size, max_seq_size]
-        print('dec_inputs_size', dec_inputs.size())
-        dec_mask = get_attn_decoder_mask(dec_inputs)
-        print('dec_mask_size',dec_mask.size())
+        # print('dec_inputs_size', dec_inputs.size())
+        look_ahead_mask = get_look_ahead_mask(dec_inputs)
+        # print('dec_mask_size', look_ahead_mask.size())
 
-        dec_self_attn_mask = dec_self_attn_mask + dec_mask
-        print('dec_self_attn_mask',dec_self_attn_mask.size())
-        print('conb_emb',conb_emb.size())
+        dec_self_attn_mask = padding_mask + look_ahead_mask
+        dec_enc_padding_mask = get_padding_mask(dec_inputs, self.padding_id)
+        dec_outputs = conb_emb
         for layer in self.layers:
-            conb_emb = layer(conb_emb, dec_self_attn_mask)
-        return conb_emb
+            dec_outputs = layer(
+                dec_outputs, enc_output, dec_self_attn_mask, dec_enc_padding_mask
+            )
+            # => [bs, max_seq_size, d_hidden]
+        # print(dec_outputs.size())
+        dec_outputs = self.classifier(dec_outputs)  # [bs, max_seq_size, input_dim]
+        dec_outputs = F.log_softmax(
+            dec_outputs, dim=1
+        )  # => [bs, max_seq_size, input_dim]
+        # print(dec_outputs.size())
+        return dec_outputs
 
         # dec_self_attn_mask + dec_mask : torch.gt => 1번 레이어
 
         # dec_inputs, enc_output -> get_attn_pad_mask => mask 2번 레이어
 
 
-    def get_position(self, dec_inputs: Tensor) -> Tensor:
-        position = (
-                torch.arange(
-                    dec_inputs.size(1), device=dec_inputs.device, dtype=dec_inputs.dtype
-                )
-                .expand(dec_inputs.size(0), dec_inputs.size(1))
-                .contiguous()
-                + 1
-        )  # -> [bs, max_seq_size]
-        pos_mask = dec_inputs.eq(
-            self.padding_id
-        )  # padding은 True, padding 아닌 것 False 로 벡터를 만들어줌
-        position.masked_fill_(pos_mask, 0)
-        return position
-
-
 class Transformer(nn.Module):
     def __init__(
-            self,
-            enc_d_input: int,
-            enc_layers: int,
-            enc_heads: int,
-            enc_head_dim: int,
-            enc_ff_dim: int,
-            dec_d_input: int,
-            dec_layers: int,
-            dec_heads: int,
-            dec_head_dim: int,
-            dec_ff_dim: int,
-            d_hidden: int,
-            max_sequence_size: int,
-            dropout_rate: float = 0.0,
-            padding_id: int = 3,
+        self,
+        enc_d_input: int,
+        enc_layers: int,
+        enc_heads: int,
+        enc_head_dim: int,
+        enc_ff_dim: int,
+        dec_d_input: int,
+        dec_layers: int,
+        dec_heads: int,
+        dec_head_dim: int,
+        dec_ff_dim: int,
+        d_hidden: int,
+        max_sequence_size: int,
+        dropout_rate: float = 0.0,
+        padding_id: int = 3,
     ) -> None:
         super().__init__()
         self.encoder = Encoder(
@@ -417,12 +430,12 @@ class Transformer(nn.Module):
         Returns:
             Tensor: _description_
         """
-        print('enc_inputs_size',enc_inputs.size())
-        print('dec_input_size',dec_input.size())
+        # print('enc_inputs_size', enc_inputs.size())
+        # print('dec_input_size', dec_input.size())
 
         enc_outputs = self.encoder(enc_inputs)
 
-        print('enc_outputs_size', enc_outputs.size())
+        # print('enc_outputs_size', enc_outputs.size())
         dec_output = self.decoder(dec_input, enc_outputs)
         # print('dec_output_size', dec_output.size())
         return dec_output
