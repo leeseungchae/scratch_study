@@ -9,8 +9,6 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from ..utils.utils import get_device
-
 
 def exist_file(path: str) -> bool:
     if osp.exists(path):
@@ -65,7 +63,7 @@ class AbstractDataset(Dataset, metaclass=ABCMeta):
         self.src_data = open(x_path, "r", encoding="utf-8").readlines()
         self.src_vocab = src_vocab
         self.max_sequence_size = max_sequence_size
-        self.device = get_device()
+        self.device = get.device()
         print(src_vocab)
         self.pad = src_vocab["<pad>"]
 
